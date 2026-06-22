@@ -1,0 +1,544 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   BRAND TOKENS — RoastMyContent "Savage Ember"
+   ============================================================ */
+:root {
+  /* Brand colors */
+  --ink: #0B0B0C;
+  --ink-soft: #17171A;
+  --ink-border: #26262A;
+  --ember: #FF4D1C;
+  --ember-deep: #C2350F;
+  --acid: #E6FF3A;
+  --cream: #F4EFE6;
+  --cream-dim: #D9D2C4;
+  --smoke: #8A8A92;
+  --white: #FCFCFA;
+
+  /* Shadcn compatibility tokens — overridden to match brand */
+  --background: var(--ink);
+  --foreground: var(--white);
+  --card: var(--ink-soft);
+  --card-foreground: var(--white);
+  --popover: var(--ink-soft);
+  --popover-foreground: var(--white);
+  --primary: var(--ember);
+  --primary-foreground: var(--ink);
+  --secondary: var(--ink-soft);
+  --secondary-foreground: var(--white);
+  --muted: var(--ink-soft);
+  --muted-foreground: var(--smoke);
+  --accent: var(--acid);
+  --accent-foreground: var(--ink);
+  --destructive: #ff3b3b;
+  --border: var(--ink-border);
+  --input: var(--ink-soft);
+  --ring: var(--ember);
+  --radius: 0px; /* Sharp by default — brand is brutalist */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-space-mono);
+  --font-display: var(--font-unbounded);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  html {
+    background-color: var(--ink);
+    color: var(--white);
+    font-family: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--ink);
+    color: var(--white);
+    min-height: 100dvh;
+  }
+}
+
+/* ============================================================
+   UTILITY CLASSES — Brand Shortcuts
+   ============================================================ */
+
+/* Typography */
+.font-display {
+  font-family: var(--font-unbounded), "Unbounded", sans-serif;
+}
+.font-mono-brand {
+  font-family: var(--font-space-mono), "Space Mono", monospace;
+}
+
+/* Ember button — primary CTA */
+.btn-ember {
+  background: var(--ember);
+  color: var(--ink);
+  font-family: var(--font-unbounded), "Unbounded", sans-serif;
+  font-weight: 700;
+  border-radius: 0;
+  border: none;
+  cursor: pointer;
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.btn-ember:hover {
+  box-shadow: 4px 4px 0px var(--ink);
+  transform: translate(-2px, -2px);
+}
+.btn-ember:active {
+  box-shadow: 2px 2px 0px var(--ink);
+  transform: translate(-1px, -1px);
+}
+
+/* Ghost button */
+.btn-ghost {
+  background: transparent;
+  color: var(--ember);
+  border: 2px solid var(--ember);
+  border-radius: 0;
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.btn-ghost:hover {
+  background: var(--ember);
+  color: var(--ink);
+}
+
+/* Accessibility — keyboard focus yang jelas (kontras tinggi di atas ink) */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible,
+.btn-ember:focus-visible,
+.btn-ghost:focus-visible {
+  outline: 3px solid var(--acid);
+  outline-offset: 2px;
+}
+
+/* Acid badge */
+.badge-acid {
+  background: var(--acid);
+  color: var(--ink);
+  font-family: var(--font-space-mono), "Space Mono", monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 0;
+}
+
+/* Card surface (cream) */
+.card-cream {
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: 0;
+  box-shadow: 6px 6px 0px #000000;
+}
+
+/* Mono label */
+.label-mono {
+  font-family: var(--font-space-mono), "Space Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--smoke);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes pulse-ember {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 77, 28, 0.4);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 16px rgba(255, 77, 28, 0);
+  }
+}
+
+@keyframes scan-line {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); width: 40%; }
+  50% { width: 60%; }
+  100% { transform: translateX(300%); width: 40%; }
+}
+
+@keyframes fade-cycle {
+  0%, 20% { opacity: 1; }
+  25%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-pulse-ember {
+  animation: pulse-ember 2s ease-in-out infinite;
+}
+
+.animate-scan-line {
+  animation: scan-line 1.8s linear infinite;
+}
+
+.animate-progress {
+  animation: progress-indeterminate 1.8s ease-in-out infinite;
+}
+
+/* ============================================================
+   ROAST PIPELINE — "Cara Kerja" progress chart
+   ============================================================ */
+.pipeline-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 760px) {
+  .pipeline-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+}
+
+.pipeline-card {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-border);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+.pipeline-card:hover,
+.pipeline-card:focus-within {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ember);
+  border-color: var(--ember);
+}
+.pipeline-card.is-final:hover,
+.pipeline-card.is-final:focus-within {
+  box-shadow: 5px 5px 0 var(--acid);
+  border-color: var(--acid);
+}
+
+/* Progress bar — the visible "progression line / chart" */
+.pipeline-bar {
+  position: relative;
+  height: 8px;
+  background: #0c0c0e;
+  border-bottom: 1px solid var(--ink-border);
+}
+.pipeline-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  /* width set inline per step (25/50/75/100%) */
+  background: linear-gradient(90deg, var(--ember-deep), var(--ember));
+  background-size: 200% 100%;
+  animation: pipeline-shimmer 2.4s linear infinite;
+}
+.pipeline-card.is-final .pipeline-bar-fill {
+  background: linear-gradient(90deg, var(--ember), var(--acid));
+  background-size: 200% 100%;
+}
+@keyframes pipeline-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: 0 0; }
+}
+
+.pipeline-body {
+  padding: 16px 18px 20px;
+}
+.pipeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.pipeline-num {
+  font-family: var(--font-space-mono), "Space Mono", monospace;
+  font-weight: 700;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--ember);
+}
+.pipeline-card.is-final .pipeline-num {
+  color: var(--acid);
+}
+.pipeline-pct {
+  font-family: var(--font-space-mono), "Space Mono", monospace;
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--smoke);
+}
+.pipeline-card.is-final .pipeline-pct {
+  color: var(--acid);
+}
+.pipeline-icon {
+  display: inline-flex;
+  margin-bottom: 10px;
+  color: var(--smoke);
+}
+.pipeline-text {
+  display: block;
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--cream-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pipeline-bar-fill {
+    animation: none;
+  }
+  .pipeline-card {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   POLISH PRIMITIVES — reveal, stamp-in, fade, link hover
+   ============================================================ */
+
+/* Result card "stamp-in" — snappy, slight settle (not floaty) */
+@keyframes stamp-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.animate-stamp-in {
+  animation: stamp-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Top accent bar wipe (origin-left) — "dicetak" feel */
+@keyframes bar-wipe {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.animate-bar-wipe {
+  transform-origin: left center;
+  animation: bar-wipe 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) 0.12s both;
+}
+
+/* Verdict/hook badge pop */
+@keyframes badge-pop {
+  0% { opacity: 0; transform: scale(0.8); }
+  70% { transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-badge-pop {
+  animation: badge-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) 0.22s both;
+}
+
+/* Toggle/expander reveal */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.22s ease both;
+}
+
+/* Opacity-only fade — safe for position:fixed children (no transform containing block) */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease both;
+}
+
+/* Scroll-reveal — .is-visible toggled by IntersectionObserver (components/reveal.tsx) */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Quiet link hover — nav & footer */
+.link-quiet {
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+.link-quiet:hover {
+  color: var(--ember);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp-in,
+  .animate-bar-wipe,
+  .animate-badge-pop,
+  .animate-fade-in-up,
+  .animate-fade-in {
+    animation: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .link-quiet {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE LAYOUT — Desktop Utilities
+   ============================================================ */
+
+.page-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.page-container-narrow {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Nav */
+.nav-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Hero section: stacked mobile, side-by-side desktop */
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 40px;
+  align-items: start;
+}
+.hero-grid > * {
+  min-width: 0;
+}
+
+/* Form section: stacked mobile, side-by-side desktop */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: start;
+}
+.form-grid > * {
+  min-width: 0;
+}
+
+/* Result page: stacked mobile, side-by-side desktop */
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: start;
+}
+.result-grid > * {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .page-container { padding: 0 40px; }
+  .page-container-narrow { padding: 0 40px; }
+  .nav-inner { padding: 0 40px; }
+
+  .hero-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 56px;
+    align-items: center;
+  }
+
+  .form-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 48px;
+  }
+
+  .result-grid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 40px;
+  }
+}
+
+/* ── Halaman legal (Terms / Privacy) ── */
+.legal-body {
+  color: var(--cream);
+  font-family: var(--font-jakarta);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.legal-body h2 {
+  font-family: var(--font-unbounded);
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 28px 0 8px;
+  color: var(--cream);
+}
+.legal-body p {
+  margin: 0 0 14px;
+  color: var(--smoke);
+}
+.legal-body ul {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  color: var(--smoke);
+}
+.legal-body li {
+  margin-bottom: 6px;
+}
+.legal-body strong {
+  color: var(--cream);
+}
+.legal-body a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
