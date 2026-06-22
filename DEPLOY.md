@@ -69,7 +69,9 @@ Wajib ada (Production):
 ## 5. Domain & Hosting (Vercel)
 
 - [ ] Domain `roastmycontent.com` ter-pointing ke project Vercel & SSL aktif.
-- [ ] Plan Vercel **Pro** aktif (konkurensi & `maxDuration` lebih longgar untuk proses video).
+- [ ] Plan Vercel **Hobby** (hemat biaya). ⚠️ Konsekuensi: cron dibatasi **1×/hari** &
+      `maxDuration` mentok **60s**. Kalau video besar mulai timeout saat diproses, atau
+      storage cepat penuh karena upload yatim numpuk, pertimbangkan balik ke **Pro**.
 
 ---
 
@@ -91,7 +93,7 @@ Wajib ada (Production):
       Data baru kebaca setelah deploy + ada visitor (nggak muncul di localhost).
 - [ ] Custom events udah ke-track: `roast_selesai` & `share_diklik` (lihat di tab Analytics → Events).
 - [ ] _(Opsional, nyusul)_ Sentry untuk error monitoring — butuh bikin akun + DSN dulu.
-- [ ] **Cron cleanup** (`vercel.json` → `/api/cron/cleanup`, tiap 6 jam) muncul di
+- [ ] **Cron cleanup** (`vercel.json` → `/api/cron/cleanup`, sekali sehari — batas Hobby) muncul di
       Vercel → tab **Cron Jobs** setelah deploy. Jaring pengaman buat upload yatim
       (file >1 jam yang roast-nya gak kelar). Butuh `CRON_SECRET` ke-set (lihat #3).
 
