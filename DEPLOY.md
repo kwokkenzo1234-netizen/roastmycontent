@@ -9,7 +9,11 @@ Centang dari atas ke bawah. Yang ditandai 🔴 = **WAJIB**, jangan launch tanpa 
 
 - [ ] Jalankan migration `supabase/migrations/0001_rate_limit_atomic.sql` di SQL Editor.
 - [ ] Jalankan migration `supabase/migrations/0002_feedback.sql` di SQL Editor.
+- [ ] 🔴 Jalankan migration `supabase/migrations/0003_rate_limit_refund.sql` di SQL Editor.
+      Tanpa ini, refund jatah saat roast GAGAL tidak jalan → user tetap rugi jatah
+      walau roast error (fungsi `refund_rate_limit` cuma nge-log error, gak crash).
 - [ ] Verifikasi tabel ada: `rate_limits` (dengan unique index `ip`) dan `feedback` (RLS **enabled**).
+- [ ] Verifikasi fungsi ada: `check_and_increment_rate_limit` & `refund_rate_limit`.
 - [ ] 🟠 Pastikan `SUPABASE_URL` memakai **connection pooler** (port `6543`), bukan koneksi
       langsung (`5432`) — penting untuk serverless biar nggak kehabisan koneksi saat ramai.
 
