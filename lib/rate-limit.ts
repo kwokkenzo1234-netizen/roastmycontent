@@ -81,3 +81,23 @@ export async function checkFeedbackRateLimit(ip: string): Promise<RateLimitResul
 export async function checkGlobalRoastCap(): Promise<RateLimitResult> {
   return checkLimitFor("global:roast", GLOBAL_ROAST_CAP)
 }
+
+// Kembaliin 1 slot yang sudah di-reserve (lihat refund_rate_limit di
+// migration 0003). Dipanggil saat roast GAGAL setelah slot dipesan, supaya
+// jatah cuma kepotong saat roast benar-benar berhasil. Reservasi atomik di
+// awal request tetap mencegah abuse paralel — jadi UX adil TAPI gak bisa
+// di-hack. No-op saat bypass (dev). Gagal refund di-log, tidak melempar
+// (gagal kembaliin slot tidak boleh bikin response error).
+async function refundFor(key: string): Promise<void> {
+  if (RATE_LIMIT_BYPASS) return
+  const { error } = await supabaseAdmin.rpc("refund_rate_limit", { p_ip: key })
+  if (error) console.error("[rate-limit] refund RPC error:", error)
+}
+
+export async function refundRateLimit(ip: string): Promise<void> {
+  return refundFor(ip)
+}
+
+export async function refundGlobalRoastCap(): Promise<void> {
+  return refundFor("global:roast")
+}

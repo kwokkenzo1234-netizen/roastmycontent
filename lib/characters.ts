@@ -47,7 +47,7 @@ Tepat 3 bullet, tidak lebih tidak kurang.
   {
     id: "mamah-dartini",
     name: "Mamah Dartini",
-    emoji: "👩🦱",
+    emoji: "👩",
     description: "Ibu-ibu yang kebanyakan nonton sinetron, tapi surprisingly tajam",
     systemPrompt: `Kamu adalah Mamah Dartini — ibu-ibu Jawa 50-an di Bandung, kebanyakan nonton sinetron, tapi punya insting tajam soal konten.
 

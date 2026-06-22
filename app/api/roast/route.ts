@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { roastVideo, RoastError, type RoastErrorCode } from "@/lib/gemini"
-import { checkRateLimit, checkGlobalRoastCap } from "@/lib/rate-limit"
+import {
+  checkRateLimit,
+  checkGlobalRoastCap,
+  refundRateLimit,
+  refundGlobalRoastCap,
+} from "@/lib/rate-limit"
 import { assertSafeUrl } from "@/lib/url-guard"
 import { getWeekendCharacter, characters, weekendCharacters, WEEKEND_TEST_MODE } from "@/lib/characters"
-import { UTApi } from "uploadthing/server"
 import https from "https"
 import http from "http"
 import { URL } from "url"
 
 export const maxDuration = 60
-
-const utapi = new UTApi()
 
 // Tipe video yang didukung Gemini & diizinkan masuk.
 const ALLOWED_VIDEO_MIME = new Set([
@@ -50,7 +52,7 @@ async function fetchBuffer(
 
     const req = client.get(urlStr, options, (res) => {
       const { statusCode } = res
-      
+
       // Handle redirects
       if (statusCode && [301, 302, 303, 307, 308].includes(statusCode)) {
         const location = res.headers.location
@@ -81,7 +83,7 @@ async function fetchBuffer(
     req.on("error", (err) => {
       reject(err)
     })
-    
+
     // Timeout fetch HARUS lebih kecil dari maxDuration (60s) supaya gagal
     // dengan rapi sebelum function di-kill paksa oleh platform.
     req.setTimeout(45000, () => {
@@ -101,13 +103,18 @@ function getIP(req: NextRequest): string {
 }
 
 export async function POST(req: NextRequest) {
-  // Hoisted supaya catch bisa hapus file UploadThing pada error (mis. video
-  // inappropriate yang diblokir) — jangan tinggalin file nyangkut.
-  let fileKey: string | null = null
+  // RESERVE + REFUND (#6): jatah di-reserve atomik di awal (nutup celah abuse
+  // request paralel), lalu DIKEMBALIIN di finally kalau roast tidak berhasil —
+  // jadi jatah cuma kepotong saat roast benar-benar sukses. UX adil, gak bisa
+  // di-hack. `success` di-set true tepat sebelum return sukses.
+  let ip = "unknown"
+  let ipReserved = false
+  let globalReserved = false
+  let success = false
   try {
-    const ip = getIP(req)
+    ip = getIP(req)
 
-    // 1. Cek rate limit
+    // 1. Cek + reserve rate limit (atomik)
     const rateLimit = await checkRateLimit(ip)
     if (!rateLimit.allowed) {
       return NextResponse.json(
@@ -124,6 +131,7 @@ export async function POST(req: NextRequest) {
         }
       )
     }
+    ipReserved = true
 
     let buffer: Buffer
     let mimeType: string
@@ -146,14 +154,13 @@ export async function POST(req: NextRequest) {
 
       const arrayBuffer = await file.arrayBuffer()
       buffer = Buffer.from(arrayBuffer)
-      
+
       mimeType = file.type || (file.name.endsWith(".mov") ? "video/quicktime" : "video/mp4")
       console.log(`[roast] Direct upload received. Size: ${(buffer.byteLength / 1024 / 1024).toFixed(2)}MB`)
     } else {
       // 2. Parse body (JSON path for UploadThing)
       const body = await req.json()
-      const { fileUrl, fileKey: key, characterId: charId, context: ctx = "" } = body
-      fileKey = key
+      const { fileUrl, fileKey, characterId: charId, context: ctx = "" } = body
       characterId = charId
       userContext = ctx
 
@@ -189,13 +196,11 @@ export async function POST(req: NextRequest) {
       ? weekendCharacters.some((c) => c.id === characterId)
       : getWeekendCharacter()?.id === characterId
     if (!isMainCharacter && !isActiveWeekend) {
-      if (fileKey) await utapi.deleteFiles(fileKey).catch(() => {})
       return NextResponse.json({ error: "Karakter tidak valid." }, { status: 400 })
     }
 
     // Validasi tipe video
     if (!ALLOWED_VIDEO_MIME.has(mimeType)) {
-      if (fileKey) await utapi.deleteFiles(fileKey).catch(() => {})
       return NextResponse.json(
         { error: "Format video tidak didukung. Pakai MP4/MOV/WebM." },
         { status: 415 }
@@ -209,21 +214,16 @@ export async function POST(req: NextRequest) {
     // memori/maxDuration fungsi & kuota UploadThing saat banyak request paralel.
     const MAX_BYTES = 100 * 1024 * 1024
     if (buffer.byteLength > MAX_BYTES) {
-      // Hapus file dulu sebelum return error (jika pakai UploadThing)
-      if (fileKey) {
-        await utapi.deleteFiles(fileKey).catch(() => {})
-      }
       return NextResponse.json(
         { error: "Video kegedean. Maksimal 100MB." },
         { status: 413 }
       )
     }
 
-    // Cek cap GLOBAL tepat sebelum panggil Gemini — hanya request valid yang
-    // dihitung. Kalau tembus, semua user lihat pesan kebanjiran sampai besok.
+    // Cek + reserve cap GLOBAL tepat sebelum panggil Gemini — hanya request
+    // valid yang dihitung. Kalau tembus, semua user lihat pesan kebanjiran.
     const globalCap = await checkGlobalRoastCap()
     if (!globalCap.allowed) {
-      if (fileKey) await utapi.deleteFiles(fileKey).catch(() => {})
       return NextResponse.json(
         {
           error: "Lagi kebanjiran roast hari ini 🌊 Servernya istirahat dulu, balik lagi besok ya!",
@@ -232,6 +232,7 @@ export async function POST(req: NextRequest) {
         { status: 503 }
       )
     }
+    globalReserved = true
 
     // 4. Proses roast via Gemini
     console.log("[roast] Mulai roastVideo via Gemini...")
@@ -239,20 +240,13 @@ export async function POST(req: NextRequest) {
     const result = await roastVideo(buffer, mimeType, characterId, userContext)
     console.log(`[roast] Selesai roastVideo dalam ${((Date.now() - startGemini) / 1000).toFixed(2)}s`)
 
-    // 5. Hapus file dari UploadThing setelah selesai diproses (hanya jika pakai UploadThing).
-    // DI-AWAIT (bukan fire-and-forget): di serverless, function bisa di-freeze begitu
-    // response terkirim, jadi promise yang gak di-await bisa gak kebagian jalan dan
-    // file-nya nyangkut. Dibungkus try/catch supaya gagal hapus gak bikin response
-    // error — kalau toh ketinggalan, cron cleanup yang nyapu (file >1 jam = yatim).
-    if (fileKey) {
-      try {
-        await utapi.deleteFiles(fileKey)
-      } catch (err) {
-        console.error("[roast] gagal hapus UploadThing file:", err)
-      }
-    }
+    // Sukses → jatah memang kepotong (TIDAK di-refund). File UploadThing
+    // sengaja TIDAK dihapus di sini supaya "Roast Another" (karakter lain di
+    // video yang sama) tetap jalan. Pembersihan dipindah ke client
+    // (/api/cleanup-upload saat ganti video / mulai ulang) + cron harian.
+    success = true
 
-    // 6. Return hasil + info rate limit
+    // 5. Return hasil + info rate limit
     return NextResponse.json(
       {
         ...result,
@@ -268,9 +262,6 @@ export async function POST(req: NextRequest) {
     )
   } catch (err) {
     console.error("[roast] error:", err)
-
-    // Bersihkan file UploadThing kalau masih nyangkut (mis. video diblokir).
-    if (fileKey) await utapi.deleteFiles(fileKey).catch(() => {})
 
     if (err instanceof RoastError) {
       const map: Record<RoastErrorCode, { status: number; error: string }> = {
@@ -299,5 +290,13 @@ export async function POST(req: NextRequest) {
       { error: "Yah error. Coba lagi sebentar." },
       { status: 500 }
     )
+  } finally {
+    // Roast gagal/ditolak SETELAH slot di-reserve → kembaliin jatahnya, biar
+    // user gak rugi jatah karena error/bug/close. Di-await supaya benar-benar
+    // jalan sebelum function serverless di-freeze. Sukses → skip (jatah kepotong).
+    if (!success) {
+      if (ipReserved) await refundRateLimit(ip).catch(() => {})
+      if (globalReserved) await refundGlobalRoastCap().catch(() => {})
+    }
   }
 }

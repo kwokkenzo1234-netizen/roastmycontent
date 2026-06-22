@@ -125,19 +125,33 @@ export async function roastVideo(
     // supaya video yang keblok filter tetap ke-deteksi, bukan dapat JSON kosong).
     const roastPrompt = buildRoastPrompt(characterId, userContext, gender, ageRange, categoryScores)
     const roastResult = await model.generateContent([videoData, { text: roastPrompt }])
-    const roastRaw = extractTextOrThrow(roastResult).replace(/```json|```/g, "").trim()
+    const roastRaw = extractTextOrThrow(roastResult).replace(/```/g, "").trim()
 
     let roastText = roastRaw
     let badgeNegative: string | null = null
     let badgePositive: string | null = null
 
-    try {
-      const roastParsed = JSON.parse(roastRaw)
-      roastText = roastParsed.roast ?? roastRaw
-      badgeNegative = roastParsed.badge_negative ?? null
-      badgePositive = roastParsed.badge_positive ?? null
-    } catch {
-      // fallback: pakai raw text sebagai roast, badge null
+    // Format baru: teks roast bebas + blok "===BADGE===" berisi baris
+    // negatif/positif. Jauh lebih tahan-banting dari JSON — teks roast yang
+    // panjang/ada kutip/multi-baris gak perlu di-escape, jadi gak gampang
+    // bikin parse gagal & nampilin "JSON mentah" ke user (bug Mentor Jujur).
+    const delimIdx = roastRaw.search(/===\s*BADGE\s*===/i)
+    if (delimIdx !== -1) {
+      roastText = roastRaw.slice(0, delimIdx).trim()
+      const badgeBlock = roastRaw.slice(delimIdx)
+      badgeNegative = badgeBlock.match(/negatif\s*:\s*([a-z_]+)/i)?.[1]?.toLowerCase() ?? null
+      badgePositive = badgeBlock.match(/positif\s*:\s*([a-z_]+)/i)?.[1]?.toLowerCase() ?? null
+    } else if (roastRaw.startsWith("{")) {
+      // Fallback: kalau model malah balikin JSON lama, salvage roast-nya biar
+      // gak pernah nampilin JSON mentah ke user.
+      try {
+        const parsed = JSON.parse(roastRaw)
+        roastText = parsed.roast ?? roastText
+        badgeNegative = parsed.badge_negative ?? null
+        badgePositive = parsed.badge_positive ?? null
+      } catch {
+        // biarin raw text apa adanya
+      }
     }
 
     // Catat token nyata (analisis + roast) buat estimasi biaya per request.
@@ -236,14 +250,16 @@ Roast sebagai karakter berikut:
 ${character.systemPrompt}
 
 SETELAH menulis roast, tentukan 2 badge berdasarkan LOGIKA INI:
-- badge_negative: kategori dengan score TERENDAH yang JUGA kamu singgung/kritik di roast kamu. Kalau kategori terendah TIDAK kamu singgung di roast, pilih kategori terendah berikutnya yang KAMU SINGGUNG.
-- badge_positive: kategori dengan score TERTINGGI yang TIDAK kamu kritik negatif di roast kamu. Kalau roast kamu mengkritik kategori dengan score tinggi (kamu salah/bias), JANGAN pilih itu — pilih kategori tertinggi lain yang aman/tidak dikritik.
+- badge negatif: kategori dengan score TERENDAH yang JUGA kamu singgung/kritik di roast kamu. Kalau kategori terendah TIDAK kamu singgung di roast, pilih kategori terendah berikutnya yang KAMU SINGGUNG.
+- badge positif: kategori dengan score TERTINGGI yang TIDAK kamu kritik negatif di roast kamu. Kalau roast kamu mengkritik kategori dengan score tinggi (kamu salah/bias), JANGAN pilih itu — pilih kategori tertinggi lain yang aman/tidak dikritik.
 - Tujuannya: badge harus selalu konsisten dengan apa yang kamu bilang di roast, bukan kontradiksi.
 
-Balas HANYA dengan JSON valid, tanpa markdown, tanpa backtick:
-{
-  "roast": "string (teks roast lengkap dalam karakter)",
-  "badge_negative": "string (nama kategori, contoh: hook)",
-  "badge_positive": "string (nama kategori, contoh: visual)"
-}`
+FORMAT OUTPUT — WAJIB diikuti persis. JANGAN pakai JSON, JANGAN pakai markdown/backtick:
+Tulis teks roast lengkap dulu (dalam karakter, bebas, boleh beberapa baris).
+Lalu di baris baru, tulis blok ini PERSIS:
+===BADGE===
+negatif: <nama_kategori>
+positif: <nama_kategori>
+
+<nama_kategori> HARUS salah satu dari: hook, editing, audio, delivery, visual, script, pacing, originality, cta, relatability.`
 }

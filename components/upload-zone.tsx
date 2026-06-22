@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { UploadSimple, VideoCamera, X, CheckCircle, CircleNotch } from "@phosphor-icons/react"
 import { useUploadThing } from "@/lib/uploadthing"
 
@@ -15,8 +15,8 @@ interface UploadZoneProps {
   disabled?: boolean
 }
 
-const ACCEPTED_TYPES = ["video/mp4", "video/quicktime", "video/webm"]
 const MAX_BYTES = 100 * 1024 * 1024 // 100MB client-side guard (match server cap)
+const MAX_UPLOAD_RETRIES = 2 // retry upload yang gagal (jaringan HP suka putus) sebelum nyerah
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
@@ -35,7 +35,13 @@ export default function UploadZone({
   const [validationError, setValidationError] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
-  const [currentFile, setCurrentFile] = useState<File | null>(null)
+  // Ref biar callback UploadThing selalu lihat file terbaru (bukan closure lama),
+  // plus hitungan retry untuk auto-coba-ulang upload yang gagal.
+  const currentFileRef = useRef<File | null>(null)
+  const retryCountRef = useRef(0)
+  // Ref ke startUpload supaya bisa dipanggil dari dalam onUploadError tanpa
+  // self-reference (hindari use-before-define).
+  const startUploadRef = useRef<(files: File[]) => void>(() => {})
 
   const { startUpload } = useUploadThing("videoUploader", {
     onUploadProgress: (progress: number) => {
@@ -44,18 +50,31 @@ export default function UploadZone({
     onClientUploadComplete: (res) => {
       setIsUploading(false)
       setUploadProgress(0)
-      if (res && res[0] && currentFile) {
+      retryCountRef.current = 0
+      const file = currentFileRef.current
+      if (res && res[0] && file) {
         // Gunakan ufsUrl sesuai dengan rekomendasi UploadThing
         const fileUrl = res[0].ufsUrl || res[0].url
-        onUploadComplete(fileUrl, res[0].key, currentFile)
+        onUploadComplete(fileUrl, res[0].key, file)
       }
     },
     onUploadError: (err: Error) => {
+      const msg = (err.message ?? "").toLowerCase()
+      const isTokenErr = msg.includes("token")
+      // Auto-retry kegagalan sementara (jaringan HP putus) sebelum nyerah — biar
+      // user gak perlu pilih file & coba ulang manual 2-3x. Token error = config,
+      // gak ada gunanya retry.
+      const file = currentFileRef.current
+      if (!isTokenErr && file && retryCountRef.current < MAX_UPLOAD_RETRIES) {
+        retryCountRef.current += 1
+        setUploadProgress(0)
+        setTimeout(() => startUploadRef.current([file]), 800 * retryCountRef.current)
+        return // tetap di state uploading (spinner tetap jalan)
+      }
       setIsUploading(false)
       setUploadProgress(0)
-      // Detect token/config error dan wrap dengan pesan yang jelas
-      const msg = err.message ?? ""
-      if (msg.toLowerCase().includes("invalid token") || msg.toLowerCase().includes("token")) {
+      retryCountRef.current = 0
+      if (isTokenErr) {
         onUploadError(
           new Error(
             "UPLOADTHING_TOKEN belum di-set atau formatnya salah. " +
@@ -68,8 +87,16 @@ export default function UploadZone({
     },
   })
 
+  // Sinkronkan ref ke startUpload terbaru (dipakai retry di onUploadError) lewat
+  // effect, bukan saat render — sesuai aturan react-hooks/refs.
+  useEffect(() => {
+    startUploadRef.current = startUpload
+  }, [startUpload])
+
   const validate = useCallback((file: File): string | null => {
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    // Longgar soal MIME: HP kadang kasih type kosong / non-standar. Tolak hanya
+    // kalau JELAS bukan video; server tetap validasi tipe & ukuran lagi.
+    if (file.type && !file.type.startsWith("video/")) {
       return "Format tidak didukung. Pakai MP4, MOV, atau WebM."
     }
     if (file.size > MAX_BYTES) {
@@ -87,7 +114,8 @@ export default function UploadZone({
         return
       }
 
-      setCurrentFile(file)
+      currentFileRef.current = file
+      retryCountRef.current = 0
 
       // Check if we should use direct path (localhost only for fast dev, production always uses UploadThing)
       const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
@@ -272,7 +300,7 @@ export default function UploadZone({
         <input
           id="video-upload"
           type="file"
-          accept="video/mp4,video/quicktime,video/webm"
+          accept="video/*"
           className="sr-only"
           onChange={handleInputChange}
           disabled={disabled}

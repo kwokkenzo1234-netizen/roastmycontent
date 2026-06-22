@@ -67,6 +67,29 @@ function Nav({
   )
 }
 
+// Hapus file UploadThing dari server saat user benar-benar selesai dengan video
+// itu (ganti video / mulai ulang). File TIDAK lagi dihapus tiap habis roast biar
+// "Roast Another" jalan, jadi pembersihan dipindah ke sini. sendBeacon supaya
+// tetap kekirim walau halaman pindah. Backstop: cron cleanup harian.
+function cleanupUpload(key: string | null) {
+  if (!key || typeof navigator === "undefined") return
+  const body = JSON.stringify({ fileKey: key })
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon("/api/cleanup-upload", new Blob([body], { type: "application/json" }))
+    } else {
+      fetch("/api/cleanup-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true,
+      }).catch(() => {})
+    }
+  } catch {
+    /* best-effort */
+  }
+}
+
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("idle")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -82,6 +105,8 @@ export default function Home() {
 
   // User memilih file (baik lokal maupun via drag drop)
   const handleFileSelect = (file: File) => {
+    // Ganti video → buang upload lama (kalau ada) dari UploadThing.
+    cleanupUpload(uploadedKey)
     setSelectedFile(file)
     setUploadedUrl(null)
     setUploadedKey(null)
@@ -94,6 +119,8 @@ export default function Home() {
 
   // UploadThing selesai upload → simpan URL + key
   const handleUploadComplete = (fileUrl: string, fileKey: string, file: File) => {
+    // Upload baru menggantikan yang lama → buang file lama dari UploadThing.
+    if (uploadedKey && uploadedKey !== fileKey) cleanupUpload(uploadedKey)
     setUploadedUrl(fileUrl)
     setUploadedKey(fileKey)
     setSelectedFile(file)
@@ -113,6 +140,7 @@ export default function Home() {
   }
 
   const handleClearFile = () => {
+    cleanupUpload(uploadedKey)
     setSelectedFile(null)
     setUploadedUrl(null)
     setUploadedKey(null)
@@ -177,6 +205,7 @@ export default function Home() {
 
   // Mulai dari awal — buang video, balik ke landing kosong
   const handleStartOver = () => {
+    cleanupUpload(uploadedKey)
     setAppState("idle")
     setResult(null)
     setSelectedFile(null)
@@ -220,11 +249,11 @@ export default function Home() {
 
   // ── IDLE / UPLOADED STATE ──────────────────────────────────────────────────
   return (
-    <main key="landing" className="animate-fade-in-up" style={{ background: "var(--ink)", minHeight: "100dvh" }}>
+    <main key="landing" className="animate-fade-in-up has-mobile-cta" style={{ background: "var(--ink)", minHeight: "100dvh" }}>
       <Nav rateLimitRemaining={result?.rateLimit?.remaining} />
 
       {/* ── HERO — 2-col desktop ── */}
-      <section style={{ padding: "clamp(64px, 8vw, 110px) 0" }}>
+      <section style={{ padding: "clamp(40px, 8vw, 110px) 0" }}>
         <div className="page-container">
           <div className="hero-grid">
 
@@ -354,7 +383,7 @@ export default function Home() {
       <section
         id="upload"
         ref={formSectionRef}
-        style={{ borderTop: "1px solid var(--ink-border)", padding: "clamp(80px, 10vw, 140px) 0" }}
+        style={{ borderTop: "1px solid var(--ink-border)", padding: "clamp(48px, 10vw, 140px) 0" }}
       >
         <div className="page-container">
           <div className="form-grid">
@@ -385,7 +414,7 @@ export default function Home() {
                   marginBottom: "8px",
                 }}>
                   Handle/username lo{" "}
-                  <span style={{ color: "var(--ink-border)" }}>(opsional — buat watermark card)</span>
+                  <span style={{ color: "var(--smoke)", fontWeight: 600 }}>(opsional — buat watermark card)</span>
                 </label>
                 <input
                   id="username-input"
@@ -597,6 +626,33 @@ export default function Home() {
       </footer>
 
       <FeedbackForm />
+
+      {/* Sticky CTA (mobile only) — tombol ROAST selalu kejangkau tanpa harus
+          scroll jauh ke bawah melewati grid karakter yang tinggi. Kalau belum
+          siap, klik-nya nge-scroll ke form. */}
+      <div className="mobile-cta-bar">
+        <button
+          onClick={() => {
+            if (canRoast) handleRoast()
+            else document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })
+          }}
+          className="btn-ember"
+          aria-label="Roast video"
+          style={{
+            width: "100%",
+            padding: "15px",
+            fontSize: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            opacity: canRoast ? 1 : 0.6,
+          }}
+        >
+          <Fire size={20} weight="fill" />
+          {canRoast ? "ROAST GUE" : !selectedFile ? "Upload video dulu" : "Pilih karakter dulu"}
+        </button>
+      </div>
     </main>
   )
 }
