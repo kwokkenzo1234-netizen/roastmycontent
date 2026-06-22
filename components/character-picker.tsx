@@ -17,7 +17,6 @@ interface CharacterButtonProps {
 
 function CharacterButton({ char, isSelected, onSelect, isWeekend = false }: CharacterButtonProps) {
   const isDefault = char.id === "mentor-jujur"
-  const isGebetan = char.id === "gebetan"
   const isCiciPik = char.id === "cici-pik"
 
   return (
@@ -25,7 +24,7 @@ function CharacterButton({ char, isSelected, onSelect, isWeekend = false }: Char
       onClick={() => onSelect(char.id)}
       aria-pressed={isSelected}
       suppressHydrationWarning
-      className={isWeekend && !isSelected ? "weekend-glow" : undefined}
+      className={`char-btn${isWeekend && !isSelected ? " weekend-glow" : ""}`}
       style={{
         background: "var(--ink-soft)",
         border: isSelected || isWeekend
@@ -101,7 +100,7 @@ function CharacterButton({ char, isSelected, onSelect, isWeekend = false }: Char
       {/* Emoji */}
       <span
         style={{ fontSize: "2rem", lineHeight: 1, marginTop: "4px" }}
-        className={isGebetan ? "emoji-heartbeat" : undefined}
+        className={isSelected ? "char-emoji is-selected" : "char-emoji"}
       >
         {char.emoji}
       </span>
@@ -154,16 +153,26 @@ export default function CharacterPicker({ selectedId, onSelect }: CharacterPicke
   return (
     <>
       <style>{`
-        @keyframes heartbeat {
-          0%, 100% { transform: scale(1); }
-          14% { transform: scale(1.2); }
-          28% { transform: scale(1); }
-          42% { transform: scale(1.15); }
-          56% { transform: scale(1); }
-        }
-        .emoji-heartbeat {
+        /* Emoji micro-interaksi — SEMUA karakter sama: pop halus pas hover,
+           pop sekali pas kepilih. Gak ada loop idle (konsisten, gak ribut). */
+        .char-emoji {
           display: inline-block;
-          animation: heartbeat 2.4s ease-in-out infinite;
+          transform-origin: center bottom;
+          transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .char-btn:hover .char-emoji {
+          transform: scale(1.14);
+        }
+        .char-btn:active .char-emoji {
+          transform: scale(0.94);
+        }
+        .char-emoji.is-selected {
+          animation: emoji-pop 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        @keyframes emoji-pop {
+          0% { transform: scale(1); }
+          55% { transform: scale(1.24); }
+          100% { transform: scale(1); }
         }
         .char-grid {
           display: grid;
@@ -183,7 +192,13 @@ export default function CharacterPicker({ selectedId, onSelect }: CharacterPicke
           animation: weekend-pulse 2s ease-in-out infinite;
         }
         @media (prefers-reduced-motion: reduce) {
-          .emoji-heartbeat,
+          .char-emoji,
+          .char-btn:hover .char-emoji,
+          .char-btn:active .char-emoji {
+            transition: none;
+            transform: none;
+          }
+          .char-emoji.is-selected,
           .weekend-glow {
             animation: none;
           }

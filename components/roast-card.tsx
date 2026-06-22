@@ -226,18 +226,12 @@ export default function RoastCard({ result, characterId, username, onRoastAnothe
 
           {/* Cream card */}
           <div
-            className="card-cream animate-stamp-in"
+            className="card-cream animate-stamp-in roast-preview-card"
             style={{
-              width: "100%",
-              maxWidth: "480px",
-              margin: "0 auto",
-              aspectRatio: "1 / 1",
               padding: "clamp(18px, 4vw, 32px)",
               display: "flex",
               flexDirection: "column",
               justifyContent: "space-between",
-              position: "relative",
-              overflow: "hidden",
             }}
           >
             <div className="animate-bar-wipe" style={{ position: "absolute", top: 0, left: 0, right: 0, height: "5px", background: "var(--ember)" }} />
@@ -301,14 +295,6 @@ export default function RoastCard({ result, characterId, username, onRoastAnothe
               </p>
             </div>
           </div>
-
-          {/* Full-size link */}
-          <p className="label-mono" style={{ textAlign: "center", marginTop: "8px", fontSize: "0.6rem" }}>
-            <a href={cardUrl} target="_blank" rel="noopener noreferrer"
-              style={{ color: "var(--ember)", textDecoration: "none" }}>
-              Buka card full-size ↗
-            </a>
-          </p>
         </div>
 
         {/* RIGHT: Actions + Analysis */}

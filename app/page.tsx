@@ -41,7 +41,7 @@ function Nav({
   rateLimitRemaining?: number
 }) {
   return (
-    <nav style={{ borderBottom: "1px solid var(--ink-border)", padding: slim ? "14px 0" : "20px 0" }}>
+    <nav className="site-nav" style={{ borderBottom: "1px solid var(--ink-border)", padding: slim ? "14px 0" : "20px 0" }}>
       <div className="nav-inner">
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <span style={{
@@ -57,7 +57,7 @@ function Nav({
         </div>
         {/* Rate limit counter */}
         {rateLimitRemaining !== undefined && (
-          <span className="label-mono" style={{ fontSize: "0.6rem" }}>
+          <span className="label-mono" style={{ fontSize: "0.6rem", whiteSpace: "nowrap" }}>
             <span style={{ color: "var(--ember)" }}>{rateLimitRemaining}</span>
             {" "}roast tersisa hari ini
           </span>
@@ -383,7 +383,7 @@ export default function Home() {
       <section
         id="upload"
         ref={formSectionRef}
-        style={{ borderTop: "1px solid var(--ink-border)", padding: "clamp(48px, 10vw, 140px) 0" }}
+        style={{ borderTop: "1px solid var(--ink-border)", padding: "clamp(48px, 10vw, 140px) 0", scrollMarginTop: "80px" }}
       >
         <div className="page-container">
           <div className="form-grid">

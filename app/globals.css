@@ -173,6 +173,21 @@ input:focus-visible,
   box-shadow: 6px 6px 0px #000000;
 }
 
+/* Kartu hasil roast — 1:1 di desktop (muat), tapi di mobile tinggi ngikut isi
+   biar roast panjang gak KEPOTONG. overflow clip cuma diaktifin di desktop. */
+.roast-preview-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+}
+@media (min-width: 600px) {
+  .roast-preview-card {
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+  }
+}
+
 /* Mono label */
 .label-mono {
   font-family: var(--font-space-mono), "Space Mono", monospace;
@@ -444,7 +459,16 @@ input:focus-visible,
   padding: 0 24px;
 }
 
-/* Nav */
+/* Nav — sticky, ikut scroll (background ink semi-transparan + blur biar
+   konten gak nembus pas di-scroll lewat). */
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(11, 11, 12, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
 .nav-inner {
   max-width: 1240px;
   margin: 0 auto;
@@ -452,6 +476,8 @@ input:focus-visible,
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px 14px;
+  flex-wrap: wrap;
 }
 
 /* Hero section: stacked mobile, side-by-side desktop */
