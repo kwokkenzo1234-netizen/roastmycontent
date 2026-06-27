@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Unbounded, Plus_Jakarta_Sans, Space_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { ClerkProvider } from "@clerk/nextjs"
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site"
 import "./globals.css"
 
@@ -75,6 +76,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
+    <ClerkProvider>
     <html
       lang="id"
       className={`${unbounded.variable} ${plusJakartaSans.variable} ${spaceMono.variable}`}
@@ -88,5 +90,6 @@ export default function RootLayout({
         <Analytics />
       </body>
     </html>
+    </ClerkProvider>
   )
 }

@@ -76,7 +76,8 @@ export async function roastVideo(
   videoBuffer: Buffer,
   mimeType: string,
   characterId: string,
-  userContext = ""
+  userContext = "",
+  recentAverage: number | null = null
 ) {
   // Nama file Gemini di-hoist supaya selalu dibersihkan di finally (termasuk
   // saat video diblokir / error di tengah jalan).
@@ -123,7 +124,7 @@ export async function roastVideo(
 
     // PASS 2: Roast + badge sinkron dengan score (extractTextOrThrow tetap dipakai
     // supaya video yang keblok filter tetap ke-deteksi, bukan dapat JSON kosong).
-    const roastPrompt = buildRoastPrompt(characterId, userContext, gender, ageRange, categoryScores)
+    const roastPrompt = buildRoastPrompt(characterId, userContext, gender, ageRange, categoryScores, recentAverage)
     const roastResult = await model.generateContent([videoData, { text: roastPrompt }])
     const roastRaw = extractTextOrThrow(roastResult).replace(/```/g, "").trim()
 
@@ -223,7 +224,8 @@ function buildRoastPrompt(
   userContext: string,
   gender: string,
   ageRange: string,
-  categoryScores: Record<string, number>
+  categoryScores: Record<string, number>,
+  recentAverage: number | null = null
 ) {
   const character = getCharacter(characterId)
   if (!character) throw new Error("Karakter tidak ditemukan")
@@ -236,6 +238,22 @@ function buildRoastPrompt(
     .map(([key, val]) => `- ${key}: ${val}/100`)
     .join("\n")
 
+  // Adaptive tone (Bagian 4): rata-rata skor sekarang vs rata-rata roast terakhir
+  // user. Naik >10 → HYPE MODE; turun >10 → ROAST MODE; selain itu tone normal.
+  const scoreValues = Object.values(categoryScores)
+  const currentAverage =
+    scoreValues.length > 0 ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length : 0
+
+  let toneInstruction = ""
+  if (recentAverage !== null && scoreValues.length > 0) {
+    const improvement = currentAverage - recentAverage
+    if (improvement > 10) {
+      toneInstruction = `\n\nADAPTIVE TONE: Skor user MENINGKAT signifikan dari roast-roast sebelumnya (dari ${recentAverage.toFixed(0)} ke ${currentAverage.toFixed(0)}). Masuk ke "HYPE MODE" — tetap dalam karakter, tapi nada lebih suportif dan mengapresiasi progress, meski tetap ada sedikit roast untuk konsistensi karakter. Beri pengakuan eksplisit bahwa dia membaik.`
+    } else if (improvement < -10) {
+      toneInstruction = `\n\nADAPTIVE TONE: Skor user MENURUN dari roast-roast sebelumnya (dari ${recentAverage.toFixed(0)} ke ${currentAverage.toFixed(0)}). Masuk ke "ROAST MODE" — lebih pedas dari biasanya, tapi tetap dalam karakter, bukan kejam tanpa alasan.`
+    }
+  }
+
   return `Kamu akan me-roast konten creator ini.
 
 PROFIL CREATOR:
@@ -243,7 +261,7 @@ PROFIL CREATOR:
 - Estimasi umur: ${ageRange}${contextBlock}
 
 SCORE OBJEKTIF PER KATEGORI (hasil analisis video):
-${scoresBlock}
+${scoresBlock}${toneInstruction}
 
 Roast sebagai karakter berikut:
 

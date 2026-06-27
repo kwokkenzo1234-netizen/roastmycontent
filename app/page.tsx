@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import Link from "next/link"
+import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs"
 import UploadZone from "@/components/upload-zone"
 import CharacterPicker from "@/components/character-picker"
 import ContextInput from "@/components/context-input"
@@ -40,6 +41,9 @@ function Nav({
   slim?: boolean
   rateLimitRemaining?: number
 }) {
+  // useUser (bukan <SignedIn>/<SignedOut> — di Clerk v7 udah gak diexport dari
+  // @clerk/nextjs). isLoaded buat hindari flash state salah pas hydrate.
+  const { isSignedIn, isLoaded } = useUser()
   return (
     <nav className="site-nav" style={{ borderBottom: "1px solid var(--ink-border)", padding: slim ? "14px 0" : "20px 0" }}>
       <div className="nav-inner">
@@ -55,13 +59,33 @@ function Nav({
           </span>
           <span className="badge-acid">BETA</span>
         </div>
-        {/* Rate limit counter */}
-        {rateLimitRemaining !== undefined && (
-          <span className="label-mono" style={{ fontSize: "0.6rem", whiteSpace: "nowrap" }}>
-            <span style={{ color: "var(--ember)" }}>{rateLimitRemaining}</span>
-            {" "}roast tersisa hari ini
-          </span>
-        )}
+        {/* Kanan: counter + auth. Belum login → Masuk/Daftar (modal, gak pindah
+            halaman). Sudah login → link Progress/Recap + UserButton. */}
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          {rateLimitRemaining !== undefined && (
+            <span className="label-mono" style={{ fontSize: "0.6rem", whiteSpace: "nowrap" }}>
+              <span style={{ color: "var(--ember)" }}>{rateLimitRemaining}</span>
+              {" "}roast tersisa hari ini
+            </span>
+          )}
+          {isLoaded && !isSignedIn && (
+            <>
+              <SignInButton mode="modal">
+                <button className="nav-link">Masuk</button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="nav-link">Daftar</button>
+              </SignUpButton>
+            </>
+          )}
+          {isLoaded && isSignedIn && (
+            <>
+              <Link href="/progress" className="nav-link">Progress</Link>
+              <Link href="/recap" className="nav-link">Recap</Link>
+              <UserButton />
+            </>
+          )}
+        </div>
       </div>
     </nav>
   )

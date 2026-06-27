@@ -7,6 +7,8 @@ import {
   refundGlobalRoastCap,
 } from "@/lib/rate-limit"
 import { assertSafeUrl } from "@/lib/url-guard"
+import { auth } from "@clerk/nextjs/server"
+import { getRecentAverage, saveRoast } from "@/lib/roast-history"
 import { getWeekendCharacter, characters, weekendCharacters, WEEKEND_TEST_MODE } from "@/lib/characters"
 import https from "https"
 import http from "http"
@@ -113,6 +115,9 @@ export async function POST(req: NextRequest) {
   let success = false
   try {
     ip = getIP(req)
+    // userId dari Clerk — null kalau belum login (roast tetap jalan, cuma gak
+    // disimpan ke histori). Mempertahankan zero-friction roast pertama.
+    const { userId } = await auth()
 
     // 1. Cek + reserve rate limit (atomik)
     const rateLimit = await checkRateLimit(ip)
@@ -235,9 +240,13 @@ export async function POST(req: NextRequest) {
     globalReserved = true
 
     // 4. Proses roast via Gemini
+    // Adaptive tone: rata-rata 3 roast terakhir user (kalau login) → tone HYPE/
+    // ROAST mode tergantung tren skor (Bagian 4).
+    const recentAverage = userId ? await getRecentAverage(userId) : null
+
     console.log("[roast] Mulai roastVideo via Gemini...")
     const startGemini = Date.now()
-    const result = await roastVideo(buffer, mimeType, characterId, userContext)
+    const result = await roastVideo(buffer, mimeType, characterId, userContext, recentAverage)
     console.log(`[roast] Selesai roastVideo dalam ${((Date.now() - startGemini) / 1000).toFixed(2)}s`)
 
     // Sukses → jatah memang kepotong (TIDAK di-refund). File UploadThing
@@ -245,6 +254,23 @@ export async function POST(req: NextRequest) {
     // video yang sama) tetap jalan. Pembersihan dipindah ke client
     // (/api/cleanup-upload saat ganti video / mulai ulang) + cron harian.
     success = true
+
+    // Simpan ke histori (kalau login & ada skor). Dibungkus try/catch supaya
+    // kegagalan DB TIDAK bikin roast yang sudah sukses jadi error ke user.
+    if (userId && result.analysis?.category_scores) {
+      try {
+        await saveRoast({
+          userId,
+          characterId,
+          roastText: result.roast,
+          categoryScores: result.analysis.category_scores as Record<string, number>,
+          badgePositive: result.badges?.positive ?? null,
+          badgeNegative: result.badges?.negative ?? null,
+        })
+      } catch (e) {
+        console.error("[roast] gagal simpan histori:", e)
+      }
+    }
 
     // 5. Return hasil + info rate limit
     return NextResponse.json(
