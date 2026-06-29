@@ -289,15 +289,15 @@ export default function Home() {
               <h1 style={{
                 fontFamily: "var(--font-unbounded)",
                 fontWeight: 900,
-                fontSize: "clamp(1.8rem, 4.5vw, 3.4rem)",
-                lineHeight: 1.05,
+                fontSize: "clamp(2.35rem, 9vw, 3.4rem)",
+                lineHeight: 1.04,
                 letterSpacing: "-0.02em",
                 color: "var(--white)",
                 textTransform: "uppercase",
                 marginBottom: "16px",
               }}>
                 Berani Upload?{" "}
-                <br />
+                <br className="h1-break" />
                 Berani{" "}
                 <span style={{ color: "var(--ember)" }}>Diroast.</span>
               </h1>
@@ -305,11 +305,11 @@ export default function Home() {
               <p style={{
                 fontFamily: "var(--font-jakarta)",
                 fontWeight: 400,
-                fontSize: "clamp(0.85rem, 1.4vw, 1rem)",
+                fontSize: "clamp(1rem, 3vw, 1.1rem)",
                 lineHeight: 1.6,
                 color: "var(--smoke)",
                 marginBottom: "28px",
-                maxWidth: "440px",
+                maxWidth: "460px",
               }}>
                 AI <strong style={{ color: "var(--white)" }}>beneran nonton</strong> video lo, terus ngehina kontennya secara spesifik &amp; lucu — hasilnya jadi kartu yang bisa lo pamerin.{" "}
                 <strong style={{ color: "var(--white)" }}>Siap mental?</strong>
@@ -326,12 +326,12 @@ export default function Home() {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "10px",
-                  padding: "14px 26px",
-                  fontSize: "0.9rem",
+                  padding: "16px 30px",
+                  fontSize: "1rem",
                   textDecoration: "none",
                 }}
               >
-                <Fire size={18} weight="fill" />
+                <Fire size={20} weight="fill" />
                 SINI, UPLOAD. BERANI?
               </a>
 

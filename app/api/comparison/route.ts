@@ -21,11 +21,16 @@ export async function GET() {
     return NextResponse.json({ error: "Profil belum lengkap" }, { status: 400 })
   }
 
-  // Rata-rata skor SEMUA user di niche + tier yang SAMA (anonim, no nama).
+  // niche disimpan "kategori:detail" (mis. "edukasi:AI tools"). Buat segmentasi
+  // peer pakai KATEGORI BESAR aja (prefix sebelum ":"), biar grup-nya cukup rame.
+  const broad = profile.niche.split(":")[0]
+
+  // Rata-rata skor SEMUA user di kategori + tier yang SAMA (anonim, no nama).
+  // .like("kategori%") nangkep yang disimpan "kategori" maupun "kategori:detail".
   const { data: peers } = await supabaseAdmin
     .from("user_profiles")
     .select("average_score")
-    .eq("niche", profile.niche)
+    .like("niche", `${broad}%`)
     .eq("follower_tier", profile.follower_tier)
 
   if (!peers || peers.length < 5) {
@@ -47,7 +52,7 @@ export async function GET() {
     yourScore,
     peerAverage,
     percentile: Math.round(percentile),
-    niche: profile.niche,
+    niche: broad,
     tier: profile.follower_tier,
     totalPeers: peers.length,
   })

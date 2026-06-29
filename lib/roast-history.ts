@@ -20,6 +20,20 @@ export async function getRecentAverage(userId: string, limit = 3): Promise<numbe
   return allScores.reduce((a, b) => a + b, 0) / allScores.length
 }
 
+// Niche creator dari profil (format "kategori:detail" mis. "edukasi:AI tools").
+// Return null kalau belum onboarding / belum login → roast jalan tanpa konteks
+// niche (zero-friction roast pertama tetap kepegang).
+export async function getUserNiche(userId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("user_profiles")
+    .select("niche")
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error || !data?.niche) return null
+  return data.niche
+}
+
 interface SaveRoastArgs {
   userId: string
   characterId: string

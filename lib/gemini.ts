@@ -77,8 +77,13 @@ export async function roastVideo(
   mimeType: string,
   characterId: string,
   userContext = "",
-  recentAverage: number | null = null
+  recentAverage: number | null = null,
+  niche: string | null = null
 ) {
+  // Niche "kategori:detail" → label enak dibaca; dipakai di kedua prompt biar
+  // roast nyemplung ke konten user (kosong → prompt jalan tanpa konteks niche).
+  const nicheLabel = formatNiche(niche)
+
   // Nama file Gemini di-hoist supaya selalu dibersihkan di finally (termasuk
   // saat video diblokir / error di tengah jalan).
   let uploadedName: string | null = null
@@ -104,7 +109,7 @@ export async function roastVideo(
     const videoData = { fileData: { fileUri: file.uri, mimeType: file.mimeType } }
 
     // PASS 1: Analisis video — dapat gender + age + category scores
-    const analysisPrompt = buildAnalysisPrompt(userContext)
+    const analysisPrompt = buildAnalysisPrompt(userContext, nicheLabel)
     const analysisResult = await model.generateContent([videoData, { text: analysisPrompt }])
     const analysisRaw = extractTextOrThrow(analysisResult).replace(/```json|```/g, "").trim()
 
@@ -124,7 +129,7 @@ export async function roastVideo(
 
     // PASS 2: Roast + badge sinkron dengan score (extractTextOrThrow tetap dipakai
     // supaya video yang keblok filter tetap ke-deteksi, bukan dapat JSON kosong).
-    const roastPrompt = buildRoastPrompt(characterId, userContext, gender, ageRange, categoryScores, recentAverage)
+    const roastPrompt = buildRoastPrompt(characterId, userContext, gender, ageRange, categoryScores, recentAverage, nicheLabel)
     const roastResult = await model.generateContent([videoData, { text: roastPrompt }])
     const roastRaw = extractTextOrThrow(roastResult).replace(/```/g, "").trim()
 
@@ -177,13 +182,30 @@ export async function roastVideo(
   }
 }
 
+// Niche tersimpan "kategori:detail" (mis. "edukasi:AI tools") → label enak dibaca
+// buat prompt ("edukasi (AI tools)"). Tanpa detail → kategori aja. Kosong/null → "".
+function formatNiche(niche: string | null): string {
+  if (!niche) return ""
+  const idx = niche.indexOf(":")
+  if (idx === -1) return niche.trim()
+  const category = niche.slice(0, idx).trim()
+  const detail = niche.slice(idx + 1).trim()
+  return detail ? `${category} (${detail})` : category
+}
+
 // Prompt pass 1: analisis saja
-function buildAnalysisPrompt(userContext: string) {
+function buildAnalysisPrompt(userContext: string, niche = "") {
   const contextBlock = userContext?.trim()
     ? `\n\nKONTEKS TAMBAHAN:\n"${userContext.trim()}"`
     : ""
 
-  return `Analisis video ini secara detail.${contextBlock}
+  // Niche = audiens target. Bikin skor 'relatability' nilai relevansi ke niche
+  // itu, bukan ke "penonton umum" yang ngambang.
+  const nicheBlock = niche
+    ? `\n\nNICHE CREATOR: ${niche}\nPakai ini sebagai audiens target saat menilai 'relatability'.`
+    : ""
+
+  return `Analisis video ini secara detail.${contextBlock}${nicheBlock}
 
 Beri score objektif (1-100) untuk 10 kategori berikut:
 - hook: kekuatan 3 detik pembuka
@@ -195,7 +217,7 @@ Beri score objektif (1-100) untuk 10 kategori berikut:
 - pacing: tempo keseluruhan video
 - originality: keunikan ide/angle
 - cta: kejelasan call-to-action
-- relatability: seberapa relate ke audiens target
+- relatability: seberapa relate ke audiens target${niche ? ` (niche: ${niche})` : ""}
 
 Balas HANYA dengan JSON valid, tanpa markdown, tanpa backtick:
 {
@@ -225,13 +247,20 @@ function buildRoastPrompt(
   gender: string,
   ageRange: string,
   categoryScores: Record<string, number>,
-  recentAverage: number | null = null
+  recentAverage: number | null = null,
+  niche = ""
 ) {
   const character = getCharacter(characterId)
   if (!character) throw new Error("Karakter tidak ditemukan")
 
   const contextBlock = userContext?.trim()
     ? `\n\nKONTEKS TAMBAHAN DARI CREATOR:\n"${userContext.trim()}"`
+    : ""
+
+  // Niche di profil + instruksi biar roast nyemplung ke niche-nya (bukan generik).
+  const nicheLine = niche ? `\n- Niche: ${niche}` : ""
+  const nicheInstruction = niche
+    ? `\n\nKonten ini dari creator niche "${niche}". Bikin roast-nya nyambung ke niche itu — singgung standar, klise, atau tren khas niche tsb kalau relevan, biar kerasa personal, bukan roast generik.`
     : ""
 
   const scoresBlock = Object.entries(categoryScores)
@@ -258,10 +287,10 @@ function buildRoastPrompt(
 
 PROFIL CREATOR:
 - Gender: ${gender}
-- Estimasi umur: ${ageRange}${contextBlock}
+- Estimasi umur: ${ageRange}${nicheLine}${contextBlock}
 
 SCORE OBJEKTIF PER KATEGORI (hasil analisis video):
-${scoresBlock}${toneInstruction}
+${scoresBlock}${toneInstruction}${nicheInstruction}
 
 Roast sebagai karakter berikut:
 

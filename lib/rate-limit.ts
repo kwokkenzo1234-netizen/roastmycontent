@@ -1,9 +1,13 @@
 import { supabaseAdmin } from "./supabase"
 
-// Limit harian per IP. Bisa di-override via env saat dev (mis. ROAST_DAILY_LIMIT=2)
-// tanpa nyentuh kode; default 5 kalau env kosong/invalid.
+// Limit harian roast untuk ANONIM (per IP). Bisa di-override via env saat dev
+// (mis. ROAST_DAILY_LIMIT=2) tanpa nyentuh kode; default 5 kalau env kosong/invalid.
 const parsedLimit = Number(process.env.ROAST_DAILY_LIMIT)
-const DAILY_LIMIT = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 5
+const DAILY_LIMIT_ANONYMOUS = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 5
+
+// Limit harian roast untuk user LOGIN (per userId Clerk). Lebih besar sebagai
+// insentif daftar/masuk — counter ikut userId, jadi gak bisa di-reset ganti IP.
+const DAILY_LIMIT_LOGGED_IN = 15
 
 // Limit harian untuk submit feedback per IP. Counter terpisah dari roast
 // (lihat checkFeedbackRateLimit) supaya kirim feedback tidak makan jatah roast.
@@ -66,8 +70,21 @@ async function checkLimitFor(key: string, limit: number): Promise<RateLimitResul
   return { allowed: true, remaining: row.remaining }
 }
 
-export async function checkRateLimit(ip: string): Promise<RateLimitResult> {
-  return checkLimitFor(ip, DAILY_LIMIT)
+// Key counter roast — login → "user:<userId>" (lintas-device, gak bisa di-bypass
+// dengan ganti IP), anonim → "ip:<ip>". Reserve & refund WAJIB pakai key yang
+// sama, makanya dipusatkan di sini.
+function roastKey(identifier: string, isLoggedIn: boolean): string {
+  return isLoggedIn ? `user:${identifier}` : `ip:${identifier}`
+}
+
+// Hybrid: anonim dibatasi per IP (DAILY_LIMIT_ANONYMOUS), user login per userId
+// dengan jatah lebih besar (DAILY_LIMIT_LOGGED_IN). `identifier` = IP atau userId.
+export async function checkRateLimit(
+  identifier: string,
+  isLoggedIn = false
+): Promise<RateLimitResult> {
+  const limit = isLoggedIn ? DAILY_LIMIT_LOGGED_IN : DAILY_LIMIT_ANONYMOUS
+  return checkLimitFor(roastKey(identifier, isLoggedIn), limit)
 }
 
 // Counter feedback terpisah dari roast lewat prefix "feedback:" pada key —
@@ -94,8 +111,13 @@ async function refundFor(key: string): Promise<void> {
   if (error) console.error("[rate-limit] refund RPC error:", error)
 }
 
-export async function refundRateLimit(ip: string): Promise<void> {
-  return refundFor(ip)
+// HARUS pakai identifier + isLoggedIn yang sama dengan checkRateLimit di awal
+// request, supaya slot yang di-refund = slot yang tadi di-reserve (key cocok).
+export async function refundRateLimit(
+  identifier: string,
+  isLoggedIn = false
+): Promise<void> {
+  return refundFor(roastKey(identifier, isLoggedIn))
 }
 
 export async function refundGlobalRoastCap(): Promise<void> {

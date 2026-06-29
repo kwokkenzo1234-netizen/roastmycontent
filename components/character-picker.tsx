@@ -191,6 +191,13 @@ export default function CharacterPicker({ selectedId, onSelect }: CharacterPicke
         .weekend-glow {
           animation: weekend-pulse 2s ease-in-out infinite;
         }
+        /* Anti double-bounce: di device pointer (desktop), hover udah ngasih
+           "bounce" lewat scale-up. Jangan tumpuk pop kedua pas kepilih — itu yang
+           bikin emoji mantul dua kali (hover → klik). Di touch (no hover),
+           emoji-pop tetap jalan sebagai SATU bounce pas dipilih. */
+        @media (hover: hover) {
+          .char-emoji.is-selected { animation: none; }
+        }
         @media (prefers-reduced-motion: reduce) {
           .char-emoji,
           .char-btn:hover .char-emoji,

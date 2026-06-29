@@ -8,7 +8,7 @@ import {
 } from "@/lib/rate-limit"
 import { assertSafeUrl } from "@/lib/url-guard"
 import { auth } from "@clerk/nextjs/server"
-import { getRecentAverage, saveRoast } from "@/lib/roast-history"
+import { getRecentAverage, getUserNiche, saveRoast } from "@/lib/roast-history"
 import { getWeekendCharacter, characters, weekendCharacters, WEEKEND_TEST_MODE } from "@/lib/characters"
 import https from "https"
 import http from "http"
@@ -110,6 +110,10 @@ export async function POST(req: NextRequest) {
   // jadi jatah cuma kepotong saat roast benar-benar sukses. UX adil, gak bisa
   // di-hack. `success` di-set true tepat sebelum return sukses.
   let ip = "unknown"
+  // Identitas + flag login untuk rate-limit; disimpan di scope luar supaya
+  // refund di finally pakai key yang PERSIS sama dengan saat reserve.
+  let rlId = "unknown"
+  let rlIsUser = false
   let ipReserved = false
   let globalReserved = false
   let success = false
@@ -119,12 +123,17 @@ export async function POST(req: NextRequest) {
     // disimpan ke histori). Mempertahankan zero-friction roast pertama.
     const { userId } = await auth()
 
-    // 1. Cek + reserve rate limit (atomik)
-    const rateLimit = await checkRateLimit(ip)
+    // 1. Cek + reserve rate limit (atomik). Hybrid: login dibatasi per userId
+    // (jatah lebih besar, lintas-device), anonim per IP. Identifier + flag login
+    // disimpan ke scope luar supaya refund di finally pakai key yang sama.
+    const identifier = userId ?? ip
+    rlId = identifier
+    rlIsUser = Boolean(userId)
+    const rateLimit = await checkRateLimit(identifier, rlIsUser)
     if (!rateLimit.allowed) {
       return NextResponse.json(
         {
-          error: `Jatah roast lo hari ini habis (${5} roast/hari). Balik lagi besok.`,
+          error: "Jatah roast lo hari ini habis. Balik lagi besok.",
           resetAt: rateLimit.resetAt,
         },
         {
@@ -241,12 +250,16 @@ export async function POST(req: NextRequest) {
 
     // 4. Proses roast via Gemini
     // Adaptive tone: rata-rata 3 roast terakhir user (kalau login) → tone HYPE/
-    // ROAST mode tergantung tren skor (Bagian 4).
-    const recentAverage = userId ? await getRecentAverage(userId) : null
+    // ROAST mode tergantung tren skor (Bagian 4). Niche (dari onboarding) bikin
+    // roast nyemplung ke konten user. Dua-duanya cuma untuk user login & diambil
+    // paralel biar gak nambah latency berurutan.
+    const [recentAverage, userNiche] = userId
+      ? await Promise.all([getRecentAverage(userId), getUserNiche(userId)])
+      : [null, null]
 
     console.log("[roast] Mulai roastVideo via Gemini...")
     const startGemini = Date.now()
-    const result = await roastVideo(buffer, mimeType, characterId, userContext, recentAverage)
+    const result = await roastVideo(buffer, mimeType, characterId, userContext, recentAverage, userNiche)
     console.log(`[roast] Selesai roastVideo dalam ${((Date.now() - startGemini) / 1000).toFixed(2)}s`)
 
     // Sukses → jatah memang kepotong (TIDAK di-refund). File UploadThing
@@ -321,7 +334,7 @@ export async function POST(req: NextRequest) {
     // user gak rugi jatah karena error/bug/close. Di-await supaya benar-benar
     // jalan sebelum function serverless di-freeze. Sukses → skip (jatah kepotong).
     if (!success) {
-      if (ipReserved) await refundRateLimit(ip).catch(() => {})
+      if (ipReserved) await refundRateLimit(rlId, rlIsUser).catch(() => {})
       if (globalReserved) await refundGlobalRoastCap().catch(() => {})
     }
   }

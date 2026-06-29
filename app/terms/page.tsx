@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 }
 
 // Tanggal efektif. Update kalau isi ketentuan berubah.
-const LAST_UPDATED = "18 Juni 2026"
+const LAST_UPDATED = "27 Juni 2026"
 
 export default function TermsPage() {
   return (
@@ -105,16 +105,29 @@ export default function TermsPage() {
           penggunaan Layanan.
         </p>
 
-        <h2>8. Perubahan ketentuan</h2>
+        <h2>8. Akun &amp; login</h2>
+        <p>
+          Login bersifat <strong>opsional</strong> — kamu bisa memakai Layanan tanpa akun. Kalau kamu
+          memilih login, autentikasi ditangani penyedia pihak ketiga (<strong>Clerk</strong>), dan
+          kamu bertanggung jawab menjaga keamanan akses akunmu.
+        </p>
+        <p>
+          Sebagai pengguna yang login, kamu mendapat <strong>jatah roast harian yang lebih besar</strong>{" "}
+          serta <strong>histori roast dan pelacakan progress</strong> yang tersimpan di akunmu. Kamu
+          bisa meminta penghapusan akun beserta datanya kapan saja — detail di{" "}
+          <Link href="/privacy" style={{ color: "var(--ember)" }}>Kebijakan Privasi</Link>.
+        </p>
+
+        <h2>9. Perubahan ketentuan</h2>
         <p>
           Kami bisa memperbarui ketentuan ini sewaktu-waktu. Versi terbaru selalu ada di halaman ini
           dengan tanggal pembaruan di atas. Lanjut memakai Layanan = setuju dengan versi terbaru.
         </p>
 
-        <h2>9. Hukum yang berlaku</h2>
+        <h2>10. Hukum yang berlaku</h2>
         <p>Ketentuan ini tunduk pada hukum Republik Indonesia.</p>
 
-        <h2>10. Kontak</h2>
+        <h2>11. Kontak</h2>
         <p>
           Ada pertanyaan? Pakai tombol <strong>Feedback</strong> di dalam app, atau email{" "}
           <a href="mailto:qorvel.studio@gmail.com" style={{ color: "var(--ember)" }}>

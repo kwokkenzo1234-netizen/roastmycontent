@@ -12,6 +12,7 @@ import {
   ClipboardText,
 } from "@phosphor-icons/react"
 import { getCharacter } from "@/lib/characters"
+import { useUser } from "@clerk/nextjs"
 import { track } from "@vercel/analytics"
 
 // Convert markdown bold (*text*) jadi <strong> beneran, bukan asterisk literal.
@@ -69,6 +70,10 @@ export default function RoastCard({ result, characterId, username, onRoastAnothe
   const [isSharing, setIsSharing] = useState(false)
   const [copied, setCopied] = useState(false)
   const character = getCharacter(characterId)
+
+  // Clerk v7: useUser (bukan <SignedOut>). isLoaded biar gak flash CTA pas hydrate.
+  const { isSignedIn, isLoaded } = useUser()
+  const showSignupNudge = isLoaded && !isSignedIn
 
   const cardUrl = `/api/og?roast=${encodeURIComponent(result.roast)}&character=${encodeURIComponent(character?.name ?? "")}&u=${encodeURIComponent(username || "kamu")}`
 
@@ -388,6 +393,58 @@ export default function RoastCard({ result, characterId, username, onRoastAnothe
           >
             Mulai dari awal (video baru)
           </button>
+
+          {/* Nudge sign-up buat user yang belum login — retention hook (histori skor + progress) */}
+          {showSignupNudge && (
+            <a
+              href="/sign-up"
+              className="animate-fade-in-up"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "10px",
+                width: "100%",
+                marginTop: "8px",
+                padding: "13px 16px",
+                background: "var(--ink-soft)",
+                border: "1px solid var(--ink-border)",
+                borderLeft: "3px solid var(--acid)",
+                textDecoration: "none",
+                transition: "border-color 0.15s ease, transform 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--acid)"
+                e.currentTarget.style.borderLeftColor = "var(--acid)"
+                e.currentTarget.style.transform = "translateX(2px)"
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--ink-border)"
+                e.currentTarget.style.borderLeftColor = "var(--acid)"
+                e.currentTarget.style.transform = "translateX(0)"
+              }}
+            >
+              <span style={{
+                fontFamily: "var(--font-jakarta)",
+                fontSize: "0.8rem",
+                fontWeight: 500,
+                lineHeight: 1.4,
+                color: "var(--cream-dim)",
+              }}>
+                Mau lihat progress konten lo dari waktu ke waktu?
+              </span>
+              <span style={{
+                fontFamily: "var(--font-space-mono)",
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                whiteSpace: "nowrap",
+                color: "var(--acid)",
+              }}>
+                Sign up gratis →
+              </span>
+            </a>
+          )}
 
           {/* CTA Delphio */}
           <div

@@ -415,6 +415,14 @@ input:focus-visible,
   transform: none;
 }
 
+/* Hero headline: pakai <br> di desktop biar break-nya sengaja; di mobile hilangin
+   biar judul wrap natural & bisa lebih gede tanpa kepotong jadi 4 baris. */
+@media (max-width: 600px) {
+  .h1-break {
+    display: none;
+  }
+}
+
 /* Quiet link hover — nav & footer */
 .link-quiet {
   transition: color 0.15s ease, opacity 0.15s ease;

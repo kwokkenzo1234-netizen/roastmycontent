@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 }
 
 // Tanggal efektif. Update kalau isi kebijakan berubah.
-const LAST_UPDATED = "18 Juni 2026"
+const LAST_UPDATED = "27 Juni 2026"
 
 export default function PrivacyPage() {
   return (
@@ -47,20 +47,39 @@ export default function PrivacyPage() {
           <li><strong>Video yang kamu upload</strong> — diproses sementara untuk menghasilkan roast.</li>
           <li><strong>Konteks teks opsional</strong> — kalau kamu isi kolom tambahan.</li>
           <li>
-            <strong>Alamat IP</strong> — dipakai untuk membatasi penyalahgunaan (rate limit harian),
-            bukan untuk identifikasi pribadi.
+            <strong>Alamat IP</strong> — dipakai untuk membatasi penyalahgunaan (rate limit harian)
+            saat kamu belum login, bukan untuk identifikasi pribadi.
+          </li>
+          <li>
+            <strong>Data akun (kalau kamu login)</strong> — saat kamu daftar/masuk lewat penyedia
+            autentikasi kami (Clerk), kami menerima pengenal akun dan alamat email kamu.
+          </li>
+          <li>
+            <strong>Profil &amp; histori (kalau kamu login)</strong> — niche dan rentang follower
+            yang kamu isi saat onboarding, plus histori roast kamu (skor per kategori, badge, dan
+            teks roast) supaya kamu bisa melacak progress dari waktu ke waktu.
           </li>
           <li>
             <strong>Feedback</strong> — pesan yang kamu kirim lewat tombol Feedback, plus kontak
             (email/WA) kalau kamu isi secara sukarela.
           </li>
         </ul>
-        <p>Kami <strong>nggak</strong> minta login, nama, atau akun.</p>
+        <p>
+          <strong>Login bersifat opsional.</strong> Kamu bisa pakai Layanan tanpa akun — saat itu
+          kami tidak menyimpan histori apa pun. Data akun, profil, dan histori di atas hanya kami
+          kumpulkan kalau kamu memilih untuk login.
+        </p>
 
         <h2>2. Untuk apa data dipakai</h2>
         <ul>
           <li>Memproses video kamu menjadi roast.</li>
           <li>Mencegah penyalahgunaan dan menjaga biaya layanan tetap wajar (rate limit).</li>
+          <li>Mengelola akun dan proses login kamu (kalau kamu memilih login).</li>
+          <li>
+            Menyimpan histori roast dan menampilkan progress kamu, termasuk perbandingan{" "}
+            <strong>anonim</strong> dengan rata-rata kreator lain di niche &amp; rentang follower
+            yang sama (tidak menampilkan identitas siapa pun).
+          </li>
           <li>Menanggapi dan menindaklanjuti feedback kamu.</li>
         </ul>
 
@@ -78,8 +97,13 @@ export default function PrivacyPage() {
             <strong>dihapus segera setelah</strong> roast selesai diproses.
           </li>
           <li>
-            <strong>Supabase</strong> — menyimpan penghitung rate limit (berdasarkan IP) dan isi
-            feedback.
+            <strong>Clerk</strong> — penyedia autentikasi/login. Mengelola akun dan menyimpan
+            kredensial kamu secara aman, hanya kalau kamu memilih untuk login.
+          </li>
+          <li>
+            <strong>Supabase</strong> — basis data kami: menyimpan penghitung rate limit dan isi
+            feedback, plus — kalau kamu login — profil (niche &amp; rentang follower) dan histori
+            roast kamu.
           </li>
           <li><strong>Vercel</strong> — hosting &amp; pengiriman aplikasi.</li>
         </ul>
@@ -91,18 +115,23 @@ export default function PrivacyPage() {
             <strong>dihapus segera setelah selesai</strong>. Tidak disimpan permanen.
           </li>
           <li>
-            <strong>Penghitung IP:</strong> disimpan hanya untuk keperluan rate limit harian dan
-            di-reset setiap hari.
+            <strong>Penghitung rate limit:</strong> disimpan hanya untuk keperluan rate limit harian
+            (per IP untuk anonim, per akun untuk yang login) dan di-reset setiap hari.
           </li>
           <li><strong>Feedback:</strong> disimpan sampai kami hapus secara manual.</li>
+          <li>
+            <strong>Akun, profil &amp; histori roast:</strong> disimpan selama akun kamu aktif supaya
+            fitur progress &amp; perbandingan jalan. Kamu bisa minta penghapusan kapan saja (lihat
+            bagian Hak kamu).
+          </li>
         </ul>
 
         <h2>5. Hak kamu</h2>
         <p>
           Sesuai hukum perlindungan data yang berlaku di Indonesia (UU PDP), kamu berhak meminta
-          informasi, koreksi, atau penghapusan data kamu. Karena kami nggak menyimpan video maupun
-          akun, sebagian besar data sudah otomatis hilang setelah diproses. Untuk permintaan terkait
-          feedback, hubungi kami (lihat bawah).
+          informasi, koreksi, atau penghapusan data kamu. Video tidak kami simpan, jadi otomatis
+          hilang setelah diproses. Kalau kamu punya akun, kamu bisa minta penghapusan akun beserta
+          profil dan histori roast kamu — hubungi kami (lihat bawah).
         </p>
 
         <h2>6. Anak di bawah umur</h2>

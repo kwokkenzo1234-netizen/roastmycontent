@@ -74,7 +74,7 @@ export default async function RecapPage() {
         ) : (
           <>
             {/* Card recap */}
-            <div className="card-cream" style={{ padding: "clamp(20px, 5vw, 32px)", position: "relative" }}>
+            <div className="card-cream animate-stamp-in" style={{ padding: "clamp(20px, 5vw, 32px)", position: "relative" }}>
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 5, background: "var(--ember)" }} />
               <p className="label-mono" style={{ color: "var(--ember-deep)" }}>RECAP MINGGU INI</p>
               <p style={{ color: "var(--smoke)", fontSize: "0.85rem", marginTop: 2 }}>
